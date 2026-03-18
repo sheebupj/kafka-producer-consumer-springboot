@@ -1,0 +1,3 @@
+rootProject.name = 'kafka-producer-consumer-springboot'
+include 'lib-event-producer'
+include 'lib-event-consumer'
