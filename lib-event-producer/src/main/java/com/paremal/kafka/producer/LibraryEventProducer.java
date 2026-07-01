@@ -26,7 +26,7 @@ public class LibraryEventProducer {
     KafkaTemplate<Integer, String> kafkaTemplate;
     ObjectMapper objectMapper;
 
-    @Value("${spring.kafka,topic")
+    @Value("${spring.kafka.topic}")
     public String topic;
 
     public LibraryEventProducer(KafkaTemplate<Integer, String> kafkaTemplate, ObjectMapper objectMapper) {
@@ -35,8 +35,10 @@ public class LibraryEventProducer {
     }
 
     public CompletableFuture<SendResult<Integer, String>> sendLibraryEvent(LibraryEvent libraryEvent) throws JsonProcessingException {
+
         Integer key = libraryEvent.libraryEventId();
         String value = objectMapper.writeValueAsString(libraryEvent);
+
         var completableFuture = kafkaTemplate.sendDefault(key, value);
         return completableFuture.whenComplete((sendResult, throwable) -> {
             if (throwable != null) {
@@ -48,6 +50,7 @@ public class LibraryEventProducer {
     }
 
     public CompletableFuture<SendResult<Integer, String>> sendLibraryEventType2(LibraryEvent libraryEvent) throws JsonProcessingException {
+
         Integer key = libraryEvent.libraryEventId();
         String value = objectMapper.writeValueAsString(libraryEvent);
 
@@ -61,7 +64,17 @@ public class LibraryEventProducer {
             }
         });
     }
+
+    private ProducerRecord<Integer, String> buildProducerRecord(Integer key, String value, String topic) {
+
+        List<Header> headers = List.of(new RecordHeader("event-source", "scanner".getBytes()));
+
+        return new ProducerRecord<>(topic, null, key, value, headers);
+    }
+
+
     public SendResult<Integer, String> sendLibraryEventSync(LibraryEvent libraryEvent) throws JsonProcessingException, ExecutionException, InterruptedException, TimeoutException {
+
         Integer key = libraryEvent.libraryEventId();
         String value=objectMapper.writeValueAsString(libraryEvent);
         SendResult<Integer,String> sendResult=null;
@@ -70,25 +83,22 @@ public class LibraryEventProducer {
         }catch(ExecutionException| InterruptedException e){
             log.error("Error sending library event and exception is {}",e.getMessage());
             throw  e;
-
         }catch (Exception e) {
             log.error("Exception Sending the Message and the exception is {}", e.getMessage());
             throw e;
         }
+
         return sendResult;
+
     }
 
-    private ProducerRecord<Integer, String> buildProducerRecord(Integer key, String value, String topic) {
-        List<Header> headers = List.of(new RecordHeader("event-source", "scanner".getBytes()));
-        return new ProducerRecord<>(topic, null, key, value, headers);
-
+    private void handleFailure(Integer key, String value, Throwable throwable) {
+        log.error("Error while sending library event and exception is :{}", throwable.getMessage());
     }
 
     private void handleSucess(Integer key, String value, SendResult<Integer, String> sendResult) {
         log.info("Message sent sucessfully for key :{} and the value is {}  , partition is {}", key, value, sendResult.getRecordMetadata().partition());
     }
 
-    private void handleFailure(Integer key, String value, Throwable throwable) {
-        log.error("Error while sending library event and exception is :{}", throwable.getMessage());
-    }
+
 }

@@ -10,7 +10,7 @@ import org.springframework.kafka.config.TopicBuilder;
 @Configuration
 @Profile("local")
 public class AutoCreateConfig {
-    @Value("${spring.kafka.topic")
+    @Value("${spring.kafka.topic}")
     public String topic;
 
     @Bean
